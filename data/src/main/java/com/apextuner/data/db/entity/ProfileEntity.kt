@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Stored form of [com.apextuner.data.model.Profile]. The full profile graph is
- * serialized to JSON (see [com.apextuner.data.model.ProfileJson]) and stored in
+ * serialized to JSON (see [com.apextuner.data.model.ProfileSerializer]) and stored in
  * [payload] — this keeps schema migrations trivial and import/export lossless.
  */
 @Entity(

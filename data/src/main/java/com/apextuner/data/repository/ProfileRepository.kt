@@ -4,7 +4,6 @@ import com.apextuner.data.db.ProfileDao
 import com.apextuner.data.db.entity.ProfileEntity
 import com.apextuner.data.model.Profile
 import com.apextuner.data.model.ProfileSerializer
-import com.apextuner.data.model.ProfileJson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -87,9 +86,9 @@ class ProfileRepository @Inject constructor(
         }
     }
 
-    fun export(profiles: List<Profile>): String = ProfileJson.encodeList(profiles)
+    fun export(profiles: List<Profile>): String = ProfileSerializer.encodeList(profiles)
 
-    fun import(payload: String): List<Profile> = ProfileJson.decodeList(payload)
+    fun import(payload: String): List<Profile> = ProfileSerializer.decodeList(payload)
 
     // ---- mappers ----
 

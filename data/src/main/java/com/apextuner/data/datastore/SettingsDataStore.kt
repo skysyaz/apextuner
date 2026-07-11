@@ -2,6 +2,7 @@ package com.apextuner.data.datastore
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
@@ -61,8 +62,8 @@ class SettingsDataStore @Inject constructor(
         )
     }
 
-    suspend fun <T> update(block: (Preferences.MutableScope) -> Unit) {
-        store.edit { mut -> mut.block() }
+    private suspend fun update(block: (MutablePreferences) -> Unit) {
+        store.edit { mut -> block(mut); mut }
     }
 
     suspend fun setOnboardingComplete(v: Boolean) = update { it[PreferenceKeys.ONBOARDING_COMPLETE] = v }
