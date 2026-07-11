@@ -32,7 +32,7 @@ class VpnController @Inject constructor(
 
     suspend fun apply(cfg: NetworkConfig) {
         // 1. Persist
-        settings.setVpnMode(cfg.vpnMode)
+        settings.setVpnLastMode(cfg.vpnMode)
         settings.setDnsProvider(cfg.dnsProvider)
         settings.setCustomDohUrl(cfg.customDohUrl)
         settings.setVpnKillSwitch(cfg.killSwitch)

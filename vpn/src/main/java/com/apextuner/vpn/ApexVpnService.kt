@@ -93,8 +93,9 @@ class ApexVpnService : VpnService() {
                 builder.addRoute("::", 0)
                 val wg = ParsedWireGuard.fromConfig(networkCfg)
                 if (wg != null) {
-                    builder.addDnsServer(*wg.parsed.dnsServers.toTypedArray<String>().toTypedArray<java.net.InetAddress>().let { _ -> arrayOf<java.net.InetAddress>() })
-                    // Note: above defensive noop to avoid runtime crash if WG dns list empty.
+                    wg.parsed.dnsServers.forEach { dns ->
+                        runCatching { builder.addDnsServer(java.net.InetAddress.getByName(dns)) }
+                    }
                 }
             }
             NetworkConfig.VpnMode.DNS_ONLY -> {
@@ -126,10 +127,9 @@ class ApexVpnService : VpnService() {
             else -> { /* OFF — no per-app restrictions */ }
         }
 
-        if (networkCfg.killSwitch) {
-            // Soft layer: never allow apps to bypass the tunnel.
-            builder.allowBypass(false)
-        }
+        // No kill switch → let apps bypass the tunnel. Kill switch on → leave
+        // the default (no bypass) so traffic cannot escape the tunnel.
+        if (!networkCfg.killSwitch) builder.allowBypass()
 
         try {
             tunFd = builder.establish()
@@ -152,7 +152,7 @@ class ApexVpnService : VpnService() {
 
     override fun onRevoke() {
         // System or user tore down the VPN. Kill switch will arm automatically.
-        logs.log(TunerLog.Level.WARN, TunerLog.Category.VPN, "VPN revoked by system/user")
+        scope.launch { logs.log(TunerLog.Level.WARN, TunerLog.Category.VPN, "VPN revoked by system/user") }
         teardown()
         stopSelf()
     }
@@ -186,7 +186,7 @@ class ApexVpnService : VpnService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_vpn_ic)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("ApexTuner VPN")
             .setContentText(text)
             .setOngoing(true)
