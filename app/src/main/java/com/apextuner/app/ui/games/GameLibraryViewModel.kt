@@ -83,7 +83,7 @@ class GameLibraryViewModel @Inject constructor(
                     label = pm.getApplicationLabel(app).toString(),
                     profileId = Profile.DEFAULT_ID_MAX_PERFORMANCE,
                     enabled = true,
-                    installedAt = app.firstInstallTime,
+                    installedAt = runCatching { pm.getPackageInfo(app.packageName, 0).firstInstallTime }.getOrDefault(0L),
                     lastLaunchedAt = 0L
                 )
             }

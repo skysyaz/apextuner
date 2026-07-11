@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
 
 /**
  * Lightweight haptic helper. Wraps Compose's [LocalHapticFeedback] so every
@@ -35,6 +34,3 @@ fun rememberHaptics(enabled: Boolean = true): Haptics {
         Haptics(enabled) { type -> feedback.performHapticFeedback(type) }
     }
 }
-
-@Suppress("unused")
-private val viewMarker = LocalView.current
