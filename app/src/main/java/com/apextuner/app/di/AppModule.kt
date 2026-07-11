@@ -2,6 +2,7 @@ package com.apextuner.app.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.work.WorkManager
 import com.apextuner.data.db.ApexDatabase
 import com.apextuner.data.db.GameDao
 import com.apextuner.data.db.LogDao
@@ -48,4 +49,8 @@ object AppModule {
     @Provides @Singleton
     fun provideSettingsRepository(store: SettingsDataStore): SettingsRepository =
         SettingsRepository(store)
+
+    @Provides @Singleton
+    fun provideWorkManager(@ApplicationContext ctx: Context): WorkManager =
+        WorkManager.getInstance(ctx)
 }
