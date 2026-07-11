@@ -89,7 +89,7 @@ class CpuTopology @Inject constructor() {
         for (part in raw.trim().split(",")) {
             val token = part.trim()
             if (token.isEmpty()) continue
-            if ("-".in(token)) {
+            if ("-" in token) {
                 val (a, b) = token.split("-").mapNotNull { it.toIntOrNull() }
                 if (a != null && b != null) for (i in a..b) out.add(i)
             } else {

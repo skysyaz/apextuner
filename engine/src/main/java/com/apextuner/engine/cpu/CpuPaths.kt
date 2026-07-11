@@ -41,5 +41,5 @@ object CpuPaths {
     /** /proc/stat first column (name) + 10 jiffy counters. */
     val procStat = "/proc/stat"
 
-    /** /sys/class/thermal/thermal_zone*/temp helpers live in [com.apextuner.engine.thermal.ThermalPaths]. */
+    /** Thermal zone temp helpers live in [com.apextuner.engine.thermal.ThermalPaths]. */
 }
