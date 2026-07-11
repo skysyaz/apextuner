@@ -71,7 +71,7 @@ class ShizukuShell @Inject constructor() : ShellExecutor {
         val method = Shizuku::class.java.methods.firstOrNull { it.name == "newProcess" }
             ?: error("Shizuku.newProcess unavailable (server too old)")
         val args = arrayOf("sh", "-c", cmd)
-        return method.invoke(Shizuku, args, null, null) as Process
+        return method.invoke(null, args, null, null) as Process
     }
 }
 

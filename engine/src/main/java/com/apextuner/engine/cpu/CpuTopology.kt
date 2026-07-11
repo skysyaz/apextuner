@@ -1,5 +1,6 @@
 package com.apextuner.engine.cpu
 
+import com.apextuner.data.model.CpuClusterConfig
 import com.apextuner.engine.root.ShellExecutor
 import javax.inject.Inject
 import javax.inject.Singleton

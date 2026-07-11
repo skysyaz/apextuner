@@ -1,6 +1,6 @@
 package com.apextuner.engine.root
 
-import com.topjohnwu.libsu.Shell
+import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.io.SuFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

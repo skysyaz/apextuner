@@ -54,8 +54,9 @@ class ProfileApplier @Inject constructor(
         }
 
         // GPU
-        if (profile.gpu != null) {
-            val gpuOk = runCatching { gpu.apply(profile.gpu) }
+        val gpuCfg = profile.gpu
+        if (gpuCfg != null) {
+            val gpuOk = runCatching { gpu.apply(gpuCfg) }
                 .onFailure { logs.log(TunerLog.Level.ERROR, TunerLog.Category.GPU, "GPU apply failed", it.message) }
                 .getOrDefault(false)
             ok = ok && gpuOk
@@ -71,10 +72,11 @@ class ProfileApplier @Inject constructor(
         // Display — global force peak Hz requires root; otherwise only the
         // in-app window is affected. The actual global setting write is done
         // via the ShellSelector when root is available.
-        if (profile.display != null && profile.display.forcePeakHz) {
+        val displayCfg = profile.display
+        if (displayCfg != null && displayCfg.forcePeakHz) {
             val shell = selector.bestForSysfsWrite()
             if (shell != null) {
-                val hz = profile.display.refreshRateHz.coerceAtLeast(60f)
+                val hz = displayCfg.refreshRateHz.coerceAtLeast(60f)
                 shell.exec(display.globalForcePeakHzCommand(hz))
             }
         }

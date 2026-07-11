@@ -1,7 +1,7 @@
 package com.apextuner.engine.root
 
 import com.apextuner.data.datastore.SettingsDataStore
-import com.topjohnwu.libsu.Shell
+import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext

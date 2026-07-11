@@ -28,7 +28,8 @@ class RollbackManager @Inject constructor(
         var skipped = 0
         // Reverse order — undo the most recent write first.
         for (cv in tx.capturedPaths.reversed()) {
-            val original = cv.original ?: run { skipped++; continue }
+            val original = cv.original
+            if (original == null) { skipped++; continue }
             try {
                 shell.writeFile(cv.path, original)
                 restored++

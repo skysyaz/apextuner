@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -75,9 +76,7 @@ class GamingModeController @Inject constructor(
 
             if (game != null && game.packageName != current?.packageName) {
                 // Game launched → apply its bound profile.
-                previousProfileId = settings.snapshot.let { snap ->
-                    snap.let { it.activeProfileId } // capture before overwrite
-                }
+                previousProfileId = settings.snapshot.first().activeProfileId
                 val profile = profileRepo.getById(game.profileId)
                     ?: profileRepo.getById(Profile.DEFAULT_ID_MAX_PERFORMANCE)
                 if (profile != null) {
