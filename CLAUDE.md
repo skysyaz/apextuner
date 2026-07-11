@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-ApexTuner is a root/shizuku Android tuning app (CPU/GPU/display/thermal/VPN/DNS) for rooted devices. Every privileged toggle writes to real sysfs nodes — there are no placebo buttons. Kotlin 2.0, Jetpack Compose, MVVM + Repository, Hilt DI, Room + DataStore. Min SDK 26, target/compile SDK 34, JDK 17.
+ApexTuner is a root/shizuku Android tuning app (CPU/GPU/display/thermal/VPN/DNS) for rooted devices. Every privileged toggle writes to real sysfs nodes — there are no placebo buttons. Kotlin 2.0, Jetpack Compose, MVVM + Repository, Hilt DI, Room + DataStore. Min SDK 26, targetSdk 34, compileSdk 35, JDK 17.
 
 This is **not** a git repo (no `.git/`); don't assume git history is available.
 

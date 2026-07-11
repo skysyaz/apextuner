@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.apextuner.native_"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26

@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.apextuner.app"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.apextuner.app"
