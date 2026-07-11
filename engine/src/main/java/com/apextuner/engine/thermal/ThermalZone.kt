@@ -3,15 +3,20 @@ package com.apextuner.engine.thermal
 /**
  * One thermal sensor reading. [tempC] is in degrees Celsius. The kernel
  * reports millidegrees; [ThermalMonitor] divides by 1000.
+ *
+ * Type matching uses substring contains — real zone names are like
+ * `cpu-thermal`, `soc-thermal`, `gpu-thermal-0`, not bare `cpu`/`gpu`.
  */
 data class ThermalZone(
     val zoneId: Int,
     val type: String,
     val tempC: Float
 ) {
-    val isCpu: Boolean get() = type.lowercase() in ThermalPaths.cpuTypes()
-    val isGpu: Boolean get() = type.lowercase() in ThermalPaths.gpuTypes()
-    val isBattery: Boolean get() = type.lowercase() in ThermalPaths.batteryTypes()
+    private val typeLower: String get() = type.lowercase()
+
+    val isCpu: Boolean get() = ThermalPaths.cpuTypes().any { typeLower.contains(it) }
+    val isGpu: Boolean get() = ThermalPaths.gpuTypes().any { typeLower.contains(it) }
+    val isBattery: Boolean get() = ThermalPaths.batteryTypes().any { typeLower.contains(it) }
 }
 
 /**

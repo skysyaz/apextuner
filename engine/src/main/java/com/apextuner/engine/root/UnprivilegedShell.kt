@@ -36,11 +36,19 @@ class UnprivilegedShell @Inject constructor() : ShellExecutor {
     override suspend fun execScript(script: String): ShellResult = exec(script)
 
     override suspend fun readFile(path: String): String? = withContext(Dispatchers.IO) {
+        // Do not gate on File.canRead() — SELinux / OEM policies often make
+        // canRead() return false even when open()+read succeeds (and vice versa).
         try {
-            val file = File(path)
-            if (!file.exists() || !file.canRead()) return@withContext null
-            file.readText().trim().takeIf { it.isNotEmpty() }
-        } catch (t: Throwable) { null }
+            File(path).readText().trim().takeIf { it.isNotEmpty() }
+        } catch (_: Throwable) {
+            // Fallback via cat for paths that block java.io.File but allow shell read.
+            try {
+                val result = exec("cat '$path'")
+                if (result.isSuccess) result.stdoutText.trim().takeIf { it.isNotEmpty() } else null
+            } catch (_: Throwable) {
+                null
+            }
+        }
     }
 
     override suspend fun writeFile(path: String, value: String): Boolean = false

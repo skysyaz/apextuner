@@ -1,5 +1,9 @@
 package com.apextuner.app.ui.network
 
+import android.app.Activity
+import android.net.VpnService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +29,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -48,24 +54,80 @@ import com.apextuner.data.model.NetworkConfig
 fun VpnDnsScreen(vm: VpnDnsViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     val haptics = rememberHaptics()
+    val context = LocalContext.current
+
+    val vpnPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            vm.applyAfterVpnConsent()
+        } else {
+            vm.onVpnPermissionDenied()
+        }
+    }
+
+    fun requestApply() {
+        haptics.confirm()
+        if (state.cfg.vpnMode == NetworkConfig.VpnMode.OFF) {
+            vm.applyAfterVpnConsent()
+            return
+        }
+        val prepare = VpnService.prepare(context)
+        if (prepare != null) {
+            vpnPermissionLauncher.launch(prepare)
+        } else {
+            vm.applyAfterVpnConsent()
+        }
+    }
 
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Security, null, tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp))
+            Icon(
+                Icons.Filled.Security, null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
             Spacer(Modifier.size(10.dp))
-            Text("VPN & DNS", style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(
+                "VPN & DNS",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White
+            )
         }
 
-        // VPN mode chips
         GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp)) {
-                Text("VPN Mode", style = MaterialTheme.typography.titleMedium,
-                    color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Works without root",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Use DNS Only (or Full Tunnel) with a DNS provider — ApexTuner starts a local VPN that changes DNS on any phone. System Private DNS still needs ADB/Shizuku/root, or open it in Settings below.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
+        }
+
+        GlassCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp)) {
+                Text(
+                    "VPN Mode",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
+                )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NetworkConfig.VpnMode.values().forEach { m ->
@@ -80,17 +142,28 @@ fun VpnDnsScreen(vm: VpnDnsViewModel = hiltViewModel()) {
                     Spacer(Modifier.height(12.dp))
                     WireGuardConfigEditor(state.cfg.wireGuardConfig, vm::setWireGuardConfig)
                 }
+                if (state.cfg.vpnMode == NetworkConfig.VpnMode.DNS_ONLY) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Recommended without root — intercepts DNS and forwards to your provider.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
 
-        // DNS provider picker
         DnsProviderPicker(state, vm)
 
         if (state.cfg.dnsProvider == NetworkConfig.DnsProvider.CUSTOM) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp)) {
-                    Text("Custom DoH URL", style = MaterialTheme.typography.titleMedium,
-                        color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Custom DoH URL",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     OutlinedTextField(
                         value = state.cfg.customDohUrl,
                         onValueChange = vm::setCustomDohUrl,
@@ -103,25 +176,34 @@ fun VpnDnsScreen(vm: VpnDnsViewModel = hiltViewModel()) {
 
         SwitchCard(
             label = "Kill Switch",
-            description = "Block all internet traffic if the VPN tunnel drops unexpectedly. Requires root for the hard (iptables) layer; the soft layer (allowBypass=false) is always applied.",
+            description = "Block apps from bypassing the VPN while it is up (no root). Hard iptables lock needs root and arms only if the tunnel drops.",
             checked = state.cfg.killSwitch,
-            enabled = state.caps.hasRoot,
+            enabled = true,
             onCheckedChange = { haptics.tap(); vm.setKillSwitch(it) }
         )
 
-        // Private DNS
         GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Dns, null, tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(22.dp))
+                    Icon(
+                        Icons.Filled.Dns, null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(22.dp)
+                    )
                     Spacer(Modifier.size(8.dp))
-                    Text("Private DNS (system-wide)", style = MaterialTheme.typography.titleMedium,
-                        color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Private DNS (system-wide)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
                 Spacer(Modifier.height(10.dp))
-                Text("Current: ${state.privateDns.mapped} (${state.privateDns.specifier.ifBlank { "—" }})",
-                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f))
+                Text(
+                    "Current: ${state.privateDns.mapped} (${state.privateDns.specifier.ifBlank { "—" }})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NetworkConfig.PrivateDnsMode.values().forEach { m ->
@@ -133,7 +215,8 @@ fun VpnDnsScreen(vm: VpnDnsViewModel = hiltViewModel()) {
                     }
                 }
                 if (state.cfg.privateDnsMode == NetworkConfig.PrivateDnsMode.STRICT ||
-                    state.cfg.privateDnsMode == NetworkConfig.PrivateDnsMode.HOSTNAME) {
+                    state.cfg.privateDnsMode == NetworkConfig.PrivateDnsMode.HOSTNAME
+                ) {
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = state.cfg.privateDnsSpecifier,
@@ -144,22 +227,33 @@ fun VpnDnsScreen(vm: VpnDnsViewModel = hiltViewModel()) {
                 }
                 if (!state.caps.canWriteSecureSettings) {
                     Spacer(Modifier.height(10.dp))
-                    Text("Requires WRITE_SECURE_SETTINGS via root or Shizuku.",
+                    Text(
+                        "System Private DNS write needs ADB/Shizuku/root. Prefer VPN DNS Only above, or open system settings:",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error)
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { haptics.tap(); vm.openSystemDnsSettings() }) {
+                        Text("Open system DNS settings")
+                    }
                 }
             }
         }
 
         Button(
-            onClick = { haptics.confirm(); vm.apply() },
+            onClick = { requestApply() },
             enabled = !state.applying,
             modifier = Modifier.fillMaxWidth()
-        ) { Text(if (state.applying) "Applying…" else "Apply VPN + DNS") }
+        ) {
+            Text(if (state.applying) "Applying…" else "Apply VPN + DNS")
+        }
 
         state.message?.let {
-            Text(it, color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(4.dp))
+            Text(
+                it,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(4.dp)
+            )
         }
 
         Spacer(Modifier.height(40.dp))
@@ -174,24 +268,35 @@ private fun DnsProviderPicker(state: NetworkUiState, vm: VpnDnsViewModel) {
         Column(Modifier.padding(18.dp)) {
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
                 OutlinedTextField(
-                    value = state.cfg.dnsProvider.name, onValueChange = {},
-                    readOnly = true, label = { Text("DNS provider") },
+                    value = state.cfg.dnsProvider.name,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("DNS provider") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     NetworkConfig.DnsProvider.values().forEach { p ->
-                        DropdownMenuItem(text = { Text(p.name) }, onClick = { vm.setDnsProvider(p); expanded = false })
+                        DropdownMenuItem(
+                            text = { Text(p.name) },
+                            onClick = { vm.setDnsProvider(p); expanded = false }
+                        )
                     }
                 }
             }
             Spacer(Modifier.height(6.dp))
             val preset = com.apextuner.vpn.dns.DnsProviderPreset.fromProvider(state.cfg.dnsProvider)
             if (preset != null) {
-                Text("DoH: ${preset.dohUrl}", style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f))
-                Text("Plain: ${preset.plainServers.joinToString()}", style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.55f))
+                Text(
+                    "DoH: ${preset.dohUrl}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.65f)
+                )
+                Text(
+                    "Plain: ${preset.plainServers.joinToString()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.55f)
+                )
             }
         }
     }
@@ -200,21 +305,33 @@ private fun DnsProviderPicker(state: NetworkUiState, vm: VpnDnsViewModel) {
 @Composable
 private fun WireGuardConfigEditor(raw: String, onUpdate: (String) -> Unit) {
     var text by remember(raw) { mutableStateOf(raw) }
-    GlassCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.VpnKey, null, tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(22.dp))
-                Spacer(Modifier.size(8.dp))
-                Text("WireGuard config", style = MaterialTheme.typography.titleMedium,
-                    color = Color.White, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = text, onValueChange = { text = it; onUpdate(it) },
-                label = { Text("Paste wg-quick config here") },
-                modifier = Modifier.fillMaxWidth().height(180.dp)
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Filled.VpnKey, null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                "WireGuard config",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold
             )
         }
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it; onUpdate(it) },
+            label = { Text("Paste wg-quick config here") },
+            modifier = Modifier.fillMaxWidth().height(180.dp)
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Without a WireGuard config, Full Tunnel falls back to DNS-only (no root).",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.55f)
+        )
     }
 }

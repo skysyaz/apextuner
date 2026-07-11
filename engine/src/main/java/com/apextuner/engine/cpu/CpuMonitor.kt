@@ -1,6 +1,7 @@
 package com.apextuner.engine.cpu
 
 import com.apextuner.data.datastore.SettingsDataStore
+import com.apextuner.engine.root.ShellSelector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,17 +16,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Polls CPU state at the interval configured in [SettingsDataStore] and emits
- * [CpuSnapshot]s. The polling loop runs on a dedicated [SupervisorJob] so a
- * single read failure doesn't tear down the monitor.
+ * Polls CPU state at ~1 Hz and emits [CpuSnapshot]s.
  *
- * Load percentages are computed from /proc/stat deltas between successive
- * samples — the kernel reports jiffies, not percentages, so we need two
- * samples to derive a meaningful number.
+ * Load percentages come from `/proc/stat` deltas and work without root on
+ * every Android device. Topology / cur-freq sysfs reads are best-effort —
+ * when they fail we still emit aggregate load so the dashboard is never stuck at 0.
  */
 @Singleton
 class CpuMonitor @Inject constructor(
     private val controller: CpuController,
+    private val selector: ShellSelector,
     private val settings: SettingsDataStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -43,50 +43,45 @@ class CpuMonitor @Inject constructor(
 
     fun stop() { running = false }
 
-    /**
-     * One-shot cold flow that polls forever. Useful for the dashboard's
-     * real-time chart which subscribes for the lifetime of the screen.
-     */
     fun tick(): Flow<CpuSnapshot> = flow {
         var last: Map<Int, LongArray>? = null
         while (true) {
             val snap = readOnce(prevProcStat = last)
-            last = readProcStatPerCpu(controller)
+            last = readProcStatPerCpu()
             if (snap != null) emit(snap)
-            val interval = settings.snapshot.let { /* read inline below */ 1000L }
-            delay(interval)
+            delay(1000L)
         }
     }
 
     private suspend fun loop() {
         while (running) {
             val snap = readOnce(lastProcStat)
-            lastProcStat = readProcStatPerCpu(controller)
+            lastProcStat = readProcStatPerCpu()
             if (snap != null) _state.value = snap
-            val s = settings.snapshot
-            // Snapshot is a Flow — we just sleep a fixed interval here and let
-            // the user's poll-interval setting take effect on next iteration.
             delay(1000L)
         }
     }
 
     private suspend fun readOnce(prevProcStat: Map<Int, LongArray>?): CpuSnapshot? {
-        val clusters = controller.readCurrent()
-        if (clusters.isEmpty()) return null
+        val curProcStat = readProcStatPerCpu()
+        if (curProcStat.isEmpty() && prevProcStat == null) return null
 
-        val curProcStat = readProcStatPerCpu(controller)
         val loads = computeLoads(prevProcStat, curProcStat)
-        val temps = mutableListOf<Float>()
+        val clusters = runCatching { controller.readCurrent() }.getOrDefault(emptyList())
 
+        if (clusters.isEmpty()) {
+            val avgLoad = if (loads.isEmpty()) 0f else loads.values.average().toFloat()
+            return CpuSnapshot(emptyList(), avgLoad, 0f, System.currentTimeMillis())
+        }
+
+        val shell = selector.best()
+        val temps = mutableListOf<Float>()
         val clusterStates = clusters.map { cluster ->
             val curFreqs = cluster.cores.map { cpu ->
-                controller.let { _ -> curProcStat // touch to keep ref
-                    readCurFreq(cluster, cpu)
-                }
+                shell.readFile(CpuPaths.scalingCurFreq(cpu))?.toLongOrNull() ?: 0L
             }
             val coreLoads = cluster.cores.map { cpu -> loads[cpu] ?: 0f }
-            val temp = coreTemps(cluster).firstOrNull() ?: 0f
-            if (temp > 0f) temps.add(temp)
+            val temp = 0f
             CpuClusterState(
                 clusterId = cluster.clusterId, label = cluster.label, cores = cluster.cores,
                 onlineMask = cluster.onlineMask, governor = cluster.governor,
@@ -97,20 +92,13 @@ class CpuMonitor @Inject constructor(
             )
         }
 
-        val avgLoad = clusterStates.flatMap { it.loadsPercent }.ifEmpty { listOf(0f) }.average().toFloat()
+        val avgLoad = when {
+            loads.isNotEmpty() -> loads.values.average().toFloat()
+            else -> clusterStates.flatMap { it.loadsPercent }.ifEmpty { listOf(0f) }.average().toFloat()
+        }
         val avgTemp = if (temps.isEmpty()) 0f else temps.average().toFloat()
         return CpuSnapshot(clusterStates, avgLoad, avgTemp, System.currentTimeMillis())
     }
-
-    private suspend fun readCurFreq(cluster: com.apextuner.data.model.CpuClusterConfig, cpu: Int): Long {
-        // Done via topology's shell — reuse controller's selector indirectly.
-        return 0L // placeholder; real implementation reads scaling_cur_freq
-    }
-
-    private suspend fun coreTemps(cluster: com.apextuner.data.model.CpuClusterConfig): List<Float> =
-        listOf(0f) // ThermalMonitor owns real thermal reads; CPU monitor mirrors.
-
-    // ---- /proc/stat parsing ----
 
     private fun computeLoads(
         prev: Map<Int, LongArray>?,
@@ -121,22 +109,21 @@ class CpuMonitor @Inject constructor(
         for ((cpu, curArr) in cur) {
             val prevArr = prev[cpu] ?: continue
             val totalDelta = (curArr.sum() - prevArr.sum()).coerceAtLeast(1L)
-            val idleDelta = (curArr[3] - prevArr[3]).coerceAtLeast(0L)
+            val idleDelta = (curArr.getOrElse(3) { 0L } - prevArr.getOrElse(3) { 0L }).coerceAtLeast(0L)
             val busy = (totalDelta - idleDelta).coerceAtLeast(0L)
             out[cpu] = (busy * 100f / totalDelta).coerceIn(0f, 100f)
         }
         return out
     }
 
-    private suspend fun readProcStatPerCpu(controller: CpuController): Map<Int, LongArray> {
-        // /proc/stat is world-readable. We exec through the unprivileged path
-        // implicitly via the controller's selector; here we just read the file.
-        val raw = com.apextuner.engine.root.UnprivilegedShell().readFile(CpuPaths.procStat)
-            ?: return emptyMap()
+    private suspend fun readProcStatPerCpu(): Map<Int, LongArray> {
+        val shell = selector.best()
+        val raw = shell.readFile(CpuPaths.procStat) ?: return emptyMap()
         val out = HashMap<Int, LongArray>()
         for (line in raw.lineSequence()) {
             if (!line.startsWith("cpu")) continue
             val parts = line.trim().split(Regex("\\s+"))
+            // Skip aggregate "cpu" line — only per-core "cpu0", "cpu1", ...
             val cpuId = parts[0].removePrefix("cpu").toIntOrNull() ?: continue
             val jiffies = parts.drop(1).mapNotNull { it.toLongOrNull() }
             if (jiffies.size >= 4) {

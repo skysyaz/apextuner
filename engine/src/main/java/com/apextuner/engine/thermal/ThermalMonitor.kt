@@ -1,11 +1,15 @@
 package com.apextuner.engine.thermal
 
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import com.apextuner.data.datastore.SettingsDataStore
 import com.apextuner.data.model.TunerLog
 import com.apextuner.data.repository.LogRepository
 import com.apextuner.engine.profile.ProfileApplier
 import com.apextuner.engine.root.ShellSelector
-import com.apextuner.engine.root.UnprivilegedShell
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,13 +27,13 @@ import javax.inject.Singleton
  * flow, and triggers auto-revert via [ProfileApplier] when a user-configured
  * threshold is breached.
  *
- * The watchdog loop is the single most safety-critical component in the app:
- * if a Max Performance profile cooks the SoC, this is what pulls it back to
- * Balanced. The loop must therefore NEVER crash — every read is wrapped in
- * runCatching and a single bad zone does not abort the whole pass.
+ * On devices where sysfs thermal zones are unreadable (common without root),
+ * falls back to [BatteryManager] EXTRA_TEMPERATURE so the dashboard still
+ * shows a live temperature instead of 0.
  */
 @Singleton
 class ThermalMonitor @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val selector: ShellSelector,
     private val settings: SettingsDataStore,
     private val logs: LogRepository,
@@ -53,20 +57,43 @@ class ThermalMonitor @Inject constructor(
         val shell = selector.best()
         val zones = mutableListOf<ThermalZone>()
 
-        // Probe thermal_zone0 .. thermal_zone15 (typical max on modern SoCs).
-        for (id in 0 until 16) {
+        for (id in 0 until 32) {
             val type = shell.readFile(ThermalPaths.type(id)) ?: continue
             val tempRaw = shell.readFile(ThermalPaths.temp(id)) ?: continue
             val milli = tempRaw.trim().toLongOrNull() ?: continue
-            val c = milli / 1000f
-            zones.add(ThermalZone(id, type.trim(), c))
+            // Some kernels report deci-C or C instead of milli-C.
+            val c = when {
+                milli > 200_000 -> milli / 1000f
+                milli > 200 -> milli / 10f
+                else -> milli.toFloat()
+            }
+            if (c in 1f..120f) zones.add(ThermalZone(id, type.trim(), c))
         }
 
-        val cpu = zones.filter { it.isCpu }.maxOfOrNull { it.tempC } ?: 0f
+        val batteryFallback = readBatteryTempC()
+
+        val cpu = zones.filter { it.isCpu }.maxOfOrNull { it.tempC }
+            // Unclassified SoC sensors are a better CPU proxy than leaving 0.
+            ?: zones.filter { !it.isBattery && !it.isGpu }.maxOfOrNull { it.tempC }
+            ?: batteryFallback
         val gpu = zones.filter { it.isGpu }.maxOfOrNull { it.tempC } ?: 0f
-        val batt = zones.filter { it.isBattery }.maxOfOrNull { it.tempC } ?: 0f
-        val maxT = zones.maxOfOrNull { it.tempC } ?: 0f
+        val batt = zones.filter { it.isBattery }.maxOfOrNull { it.tempC } ?: batteryFallback
+        val maxT = listOfNotNull(
+            zones.maxOfOrNull { it.tempC },
+            batteryFallback.takeIf { it > 0f }
+        ).maxOrNull() ?: 0f
+
         return ThermalSnapshot(zones, cpu, gpu, batt, maxT, System.currentTimeMillis())
+    }
+
+    private fun readBatteryTempC(): Float {
+        return try {
+            val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val tenths = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
+            if (tenths > 0) tenths / 10f else 0f
+        } catch (_: Throwable) {
+            0f
+        }
     }
 
     private suspend fun loop() {
@@ -86,7 +113,6 @@ class ThermalMonitor @Inject constructor(
         val gpuBreach = snap.gpuTempC > 0f && snap.gpuTempC >= s.gpuTempThresholdC
         if (!cpuBreach && !gpuBreach) return
 
-        // Debounce: don't revert more than once per 30 seconds.
         val now = System.currentTimeMillis()
         if (now - lastBreachMs < 30_000L) return
         lastBreachMs = now

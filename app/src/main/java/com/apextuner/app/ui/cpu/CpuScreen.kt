@@ -71,12 +71,12 @@ fun CpuScreen(vm: CpuViewModel = hiltViewModel()) {
         }
 
         if (!state.caps.hasRoot) {
-            GlassCard(Modifier.fillMaxWidth(), tint = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)) {
+            GlassCard(Modifier.fillMaxWidth(), tint = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Bolt, null, tint = MaterialTheme.colorScheme.error,
+                    Icon(Icons.Filled.Bolt, null, tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp))
                     Spacer(Modifier.size(12.dp))
-                    Text("Root required to write CPU sysfs nodes. Read-only mode active.",
+                    Text("Read-only without root — live freqs/governors still show when the kernel allows. Writing governors needs root.",
                         style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
                 }
             }

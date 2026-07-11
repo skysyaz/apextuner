@@ -68,9 +68,27 @@ class CpuTopology @Inject constructor() {
     }
 
     private suspend fun readCpuCount(shell: ShellExecutor): Int {
-        val online = shell.readFile(CpuPaths.onlineFile()) ?: return 0
-        // /sys/devices/system/cpu/online looks like "0-7" or "0-3,5-7"
-        return parseCpuRange(online).maxOrNull()?.let { it + 1 } ?: 0
+        val online = shell.readFile(CpuPaths.onlineFile())
+        if (online != null) {
+            // /sys/devices/system/cpu/online looks like "0-7" or "0-3,5-7"
+            val fromOnline = parseCpuRange(online).maxOrNull()?.let { it + 1 } ?: 0
+            if (fromOnline > 0) return fromOnline
+        }
+        // Unprivileged fallback: count cpuN lines in /proc/stat, then Runtime.
+        val fromStat = countCpusFromProcStat(shell)
+        if (fromStat > 0) return fromStat
+        return Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+    }
+
+    private suspend fun countCpusFromProcStat(shell: ShellExecutor): Int {
+        val raw = shell.readFile(CpuPaths.procStat) ?: return 0
+        var max = -1
+        for (line in raw.lineSequence()) {
+            if (!line.startsWith("cpu")) continue
+            val id = line.trim().split(Regex("\\s+"))[0].removePrefix("cpu").toIntOrNull() ?: continue
+            if (id > max) max = id
+        }
+        return if (max >= 0) max + 1 else 0
     }
 
     private suspend fun readRelatedCpus(shell: ShellExecutor, cpu: Int): List<Int>? {

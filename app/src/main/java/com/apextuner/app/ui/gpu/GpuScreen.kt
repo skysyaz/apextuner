@@ -75,6 +75,17 @@ fun GpuScreen(vm: GpuViewModel = hiltViewModel()) {
             return@Column
         }
 
+        if (!state.caps.hasRoot) {
+            GlassCard(Modifier.fillMaxWidth(), tint = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)) {
+                Text(
+                    "Read-only without root — clocks still update when sysfs is readable. Writing governors needs root.",
+                    Modifier.padding(14.dp),
+                    color = Color.White.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
         GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp)) {
                 Text("Detected SoC: ${state.live.socFamily}", style = MaterialTheme.typography.titleMedium,
@@ -84,8 +95,10 @@ fun GpuScreen(vm: GpuViewModel = hiltViewModel()) {
                 Spacer(Modifier.height(10.dp))
                 Text("Current clock: ${state.live.curClockMhz} MHz",
                     style = MaterialTheme.typography.bodyLarge, color = Color.White)
-                Text("Temperature: ${state.live.temperatureC.toInt()}°C",
-                    style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                Text(
+                    "Temperature: ${if (state.live.temperatureC > 0f) "${state.live.temperatureC.toInt()}°C" else "—"}",
+                    style = MaterialTheme.typography.bodyLarge, color = Color.White
+                )
             }
         }
 

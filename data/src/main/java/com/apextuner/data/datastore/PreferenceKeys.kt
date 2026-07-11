@@ -38,6 +38,7 @@ object PreferenceKeys {
     val VPN_KILL_SWITCH = booleanPreferencesKey("vpn.kill.switch")
     val VPN_LAST_MODE = stringPreferencesKey("vpn.last.mode")
     val VPN_PER_APP_PACKAGES = stringSetPreferencesKey("vpn.per.app.packages")
+    val VPN_WIREGUARD_CONFIG = stringPreferencesKey("vpn.wireguard.config")
 
     // DNS
     val DNS_PROVIDER = stringPreferencesKey("dns.provider")

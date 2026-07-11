@@ -1,6 +1,7 @@
 package com.apextuner.vpn
 
 import android.content.Context
+import android.content.Intent
 import android.provider.Settings
 import com.apextuner.data.model.NetworkConfig
 import com.apextuner.data.model.TunerLog
@@ -13,14 +14,9 @@ import javax.inject.Singleton
 /**
  * Toggles Android's system-wide Private DNS setting.
  *
- *  - [NetworkConfig.PrivateDnsMode.OFF]      → opportunistic (lets system decide)
- *  - [NetworkConfig.PrivateDnsMode.AUTO]     → "Automatic" (uses network-provided DoT)
- *  - [NetworkConfig.PrivateDnsMode.STRICT]   → "Strict" with [specifier] as hostname
- *  - [NetworkConfig.PrivateDnsMode.HOSTNAME] → same as STRICT (legacy name)
- *
- * Writing `Settings.Global.PRIVATE_DNS_*` requires the WRITE_SECURE_SETTINGS
- * permission, which we obtain via root (libsu) or via Shizuku. On devices
- * with neither, [apply] returns false and the UI shows a permission banner.
+ * Writing `Settings.Global.PRIVATE_DNS_*` requires WRITE_SECURE_SETTINGS
+ * (root, Shizuku, or `adb grant`). Without that, [apply] returns false and
+ * the UI should fall back to VPN DNS-only mode or [openSystemPrivateDnsSettings].
  *
  * Reading the current state is always possible (the keys are world-readable).
  */
@@ -49,13 +45,50 @@ class PrivateDnsController @Inject constructor(
         )
     }
 
+    /**
+     * Opens the system network/wireless settings so the user can set Private
+     * DNS manually — the no-root path for system-wide DNS.
+     */
+    fun openSystemPrivateDnsSettings(): Boolean {
+        val intents = listOf(
+            Intent("android.settings.PRIVATE_DNS_SETTINGS"),
+            Intent(Settings.ACTION_WIRELESS_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS)
+        )
+        for (intent in intents) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val ok = runCatching {
+                context.startActivity(intent)
+                true
+            }.getOrDefault(false)
+            if (ok) return true
+        }
+        return false
+    }
+
     suspend fun apply(mode: NetworkConfig.PrivateDnsMode, specifier: String): Boolean {
-        val shell = selector.bestForSecureSettings() ?: return false
         val modeArg = when (mode) {
             NetworkConfig.PrivateDnsMode.OFF -> "off"
             NetworkConfig.PrivateDnsMode.AUTO -> "auto"
             NetworkConfig.PrivateDnsMode.STRICT, NetworkConfig.PrivateDnsMode.HOSTNAME -> "hostname"
         }
+
+        // 1) Direct ContentResolver write — works if WRITE_SECURE_SETTINGS already granted via ADB.
+        val directOk = runCatching {
+            val cr = context.contentResolver
+            Settings.Global.putString(cr, "private_dns_mode", modeArg)
+            if (mode == NetworkConfig.PrivateDnsMode.STRICT || mode == NetworkConfig.PrivateDnsMode.HOSTNAME) {
+                Settings.Global.putString(cr, "private_dns_specifier", specifier)
+            }
+            true
+        }.getOrDefault(false)
+        if (directOk) {
+            logs.log(TunerLog.Level.INFO, TunerLog.Category.DNS, "Private DNS set to $mode ($specifier) via Settings.Global")
+            return true
+        }
+
+        // 2) Root / Shizuku shell
+        val shell = selector.bestForSecureSettings() ?: return false
         val script = buildString {
             append("settings put global private_dns_mode $modeArg;")
             if (mode == NetworkConfig.PrivateDnsMode.STRICT || mode == NetworkConfig.PrivateDnsMode.HOSTNAME) {
@@ -71,7 +104,7 @@ class PrivateDnsController @Inject constructor(
             level = if (ok) TunerLog.Level.INFO else TunerLog.Level.ERROR,
             category = TunerLog.Category.DNS,
             message = if (ok) "Private DNS set to $mode ($specifier)"
-                      else "Failed to set Private DNS: ${result.stderrText}",
+            else "Failed to set Private DNS: ${result.stderrText}",
             detail = script
         )
         return ok

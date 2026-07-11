@@ -2,7 +2,6 @@ package com.apextuner.app.ui.dashboard
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,17 +12,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Security
@@ -43,9 +38,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.apextuner.app.ui.components.AccentGlassCard
@@ -71,219 +66,333 @@ fun DashboardScreen(
 ) {
     val state by vm.state.collectAsState()
     val haptics = rememberHaptics(state.settings?.hapticsEnabled ?: true)
+    val listState = rememberLazyListState()
 
     GradientBackground(
         top = ApexPurple.copy(alpha = 0.18f),
         bottom = ApexBgDark
     ) {
-        Column(
-            Modifier
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Bolt, null, tint = ApexPurple, modifier = Modifier.size(32.dp))
-                Spacer(Modifier.size(12.dp))
-                Column {
-                    Text("ApexTuner", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold, color = Color.White)
-                    Text(
-                        if (state.caps.hasRoot) "Root access · ${state.activeProfileName}"
-                        else if (state.caps.hasShizuku) "Shizuku · ${state.activeProfileName}"
-                        else "Limited · ${state.activeProfileName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                OutlinedButton(onClick = { haptics.tap(); onNavigate(Routes.SETTINGS) }) {
-                    Icon(Icons.Filled.Tune, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.size(6.dp))
-                    Text("Settings")
+            item(key = "header") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Bolt, null, tint = ApexPurple, modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "ApexTuner",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                        Text(
+                            when {
+                                state.caps.hasRoot -> "Root access · ${state.activeProfileName}"
+                                state.caps.hasShizuku -> "Shizuku · ${state.activeProfileName}"
+                                else -> "Standard · ${state.activeProfileName}"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    OutlinedButton(onClick = { haptics.tap(); onNavigate(Routes.SETTINGS) }) {
+                        Icon(Icons.Filled.Tune, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("Settings")
+                    }
                 }
             }
 
-            // Gaming Mode hero card
-            AccentGlassCard(accent = if (state.gamingModeActive) ApexMint else ApexPurple) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.VideogameAsset, null,
-                        tint = if (state.gamingModeActive) ApexMint else Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(Modifier.size(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Gaming Mode", style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold, color = Color.White)
+            item(key = "gaming") {
+                AccentGlassCard(accent = if (state.gamingModeActive) ApexMint else ApexPurple) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.VideogameAsset, null,
+                            tint = if (state.gamingModeActive) ApexMint else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(Modifier.size(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Gaming Mode",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Text(
+                                if (state.gamingModeActive) "Auto-optimizing for the active game"
+                                else "Tap to enable one-tap optimization",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                        Button(
+                            onClick = { haptics.confirm(); vm.toggleGamingMode(!state.gamingModeActive) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (state.gamingModeActive) ApexMint else ApexPurple
+                            )
+                        ) {
+                            Text(
+                                if (state.gamingModeActive) "ON" else "OFF",
+                                color = if (state.gamingModeActive) ApexBgDark else Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            item(key = "stats") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        StatCardWithChart(
+                            icon = Icons.Filled.Thermostat,
+                            title = "CPU Temp",
+                            value = formatTemp(state.cpuTempC),
+                            history = state.thermalHistory,
+                            minVal = 20f, maxVal = 100f,
+                            accent = thermalColor(state.cpuTempC, 75, 85),
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatCardWithChart(
+                            icon = Icons.Filled.Memory,
+                            title = "CPU Load",
+                            value = "${state.cpuLoadPercent.toInt()}%",
+                            history = state.cpuHistory,
+                            minVal = 0f, maxVal = 100f,
+                            accent = ApexPurple,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        StatCard(
+                            icon = Icons.Filled.Whatshot,
+                            title = "GPU",
+                            value = formatTemp(state.gpuTempC),
+                            subtitle = gpuSubtitle(state),
+                            accent = thermalColor(state.gpuTempC, 85, 95),
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatCard(
+                            icon = Icons.Filled.Refresh,
+                            title = "Refresh Rate",
+                            value = "${state.refreshRateHz.toInt()}Hz",
+                            subtitle = if (state.settings?.forcePeakHz == true) "Forced peak" else "Live display",
+                            accent = ApexMint,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            item(key = "profile") {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp)) {
                         Text(
-                            if (state.gamingModeActive) "Auto-optimizing for the active game"
-                            else "Tap to enable one-tap optimization",
-                            style = MaterialTheme.typography.bodyMedium,
+                            "Active Profile",
+                            style = MaterialTheme.typography.labelLarge,
                             color = Color.White.copy(alpha = 0.7f)
                         )
-                    }
-                    Button(
-                        onClick = { haptics.confirm(); vm.toggleGamingMode(!state.gamingModeActive) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (state.gamingModeActive) ApexMint else ApexPurple
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            state.activeProfileName,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
                         )
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    haptics.tap()
+                                    vm.applyPreset(Profile.ThermalPolicy.MAX_PERFORMANCE)
+                                    onNavigate(Routes.CPU)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.Bolt, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.size(4.dp)); Text("Max")
+                            }
+                            OutlinedButton(
+                                onClick = { haptics.tap(); vm.applyPreset(Profile.ThermalPolicy.BALANCED) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.AcUnit, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.size(4.dp)); Text("Balanced")
+                            }
+                            OutlinedButton(
+                                onClick = { haptics.tap(); vm.applyPreset(Profile.ThermalPolicy.POWER_SAVE) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Filled.BatteryFull, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.size(4.dp)); Text("Save")
+                            }
+                        }
+                        if (!state.caps.hasRoot) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                "CPU/GPU writes need root. VPN, DNS, and live readings work without it.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.55f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item(key = "nav") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (state.gamingModeActive) "ON" else "OFF",
-                            color = if (state.gamingModeActive) ApexBgDark else Color.White,
-                            fontWeight = FontWeight.Bold)
+                        NavCard("CPU Tuning", "Governor, freq, cores", Icons.Filled.Memory, ApexPurple, Modifier.weight(1f)) {
+                            onNavigate(Routes.CPU)
+                        }
+                        NavCard("GPU Tuning", "Clock, governor", Icons.Filled.Whatshot, ApexRed, Modifier.weight(1f)) {
+                            onNavigate(Routes.GPU)
+                        }
                     }
-                }
-            }
-
-            // Stat grid: CPU temp, GPU temp, refresh rate, VPN status
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(0.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.height(280.dp)
-            ) {
-                item {
-                    StatCardWithChart(
-                        icon = Icons.Filled.Thermostat,
-                        title = "CPU Temp",
-                        value = "${state.cpuTempC.toInt()}°C",
-                        history = state.thermalHistory,
-                        minVal = 30f, maxVal = 100f,
-                        accent = thermalColor(state.cpuTempC, 75, 85)
-                    )
-                }
-                item {
-                    StatCardWithChart(
-                        icon = Icons.Filled.Memory,
-                        title = "CPU Load",
-                        value = "${state.cpuLoadPercent.toInt()}%",
-                        history = state.cpuHistory,
-                        minVal = 0f, maxVal = 100f,
-                        accent = ApexPurple
-                    )
-                }
-                item {
-                    StatCard(
-                        icon = Icons.Filled.Whatshot,
-                        title = "GPU Temp",
-                        value = "${state.gpuTempC.toInt()}°C",
-                        subtitle = state.gpuState.governor.ifBlank { "—" },
-                        accent = thermalColor(state.gpuTempC, 85, 95)
-                    )
-                }
-                item {
-                    StatCard(
-                        icon = Icons.Filled.Refresh,
-                        title = "Refresh Rate",
-                        value = "${state.refreshRateHz.toInt()}Hz",
-                        subtitle = if (state.settings?.forcePeakHz == true) "Forced peak" else "Adaptive",
-                        accent = ApexMint
-                    )
-                }
-            }
-
-            // Active profile quick-switch
-            GlassCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("Active Profile", style = MaterialTheme.typography.labelLarge,
-                        color = Color.White.copy(alpha = 0.7f))
-                    Spacer(Modifier.height(4.dp))
-                    Text(state.activeProfileName, style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.SemiBold, color = Color.White)
-                    Spacer(Modifier.height(16.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { haptics.tap(); vm.applyPreset(Profile.ThermalPolicy.MAX_PERFORMANCE); onNavigate(Routes.CPU) }) {
-                            Icon(Icons.Filled.Bolt, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.size(4.dp)); Text("Max")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        NavCard("Display", "Refresh rate", Icons.Filled.Refresh, ApexMint, Modifier.weight(1f)) {
+                            onNavigate(Routes.DISPLAY)
                         }
-                        OutlinedButton(onClick = { haptics.tap(); vm.applyPreset(Profile.ThermalPolicy.BALANCED) }) {
-                            Icon(Icons.Filled.AcUnit, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.size(4.dp)); Text("Balanced")
+                        NavCard("VPN & DNS", "Tunnel, DoH, kill switch", Icons.Filled.Security, ApexPurple, Modifier.weight(1f)) {
+                            onNavigate(Routes.NETWORK)
                         }
-                        OutlinedButton(onClick = { haptics.tap(); vm.applyPreset(Profile.ThermalPolicy.POWER_SAVE) }) {
-                            Icon(Icons.Filled.BatteryFull, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.size(4.dp)); Text("Save")
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        NavCard("Game Library", "Per-game profiles", Icons.Filled.SportsEsports, ApexMint, Modifier.weight(1f)) {
+                            onNavigate(Routes.GAMES)
+                        }
+                        NavCard("Profiles", "Save, import, export", Icons.Filled.Tune, ApexPurple, Modifier.weight(1f)) {
+                            onNavigate(Routes.PROFILES)
                         }
                     }
                 }
             }
 
-            // Navigation grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(0.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.height(290.dp)
-            ) {
-                item { NavCard("CPU Tuning", "Governor, freq, cores", Icons.Filled.Memory, ApexPurple) { onNavigate(Routes.CPU) } }
-                item { NavCard("GPU Tuning", "Clock, governor", Icons.Filled.Whatshot, ApexRed) { onNavigate(Routes.GPU) } }
-                item { NavCard("Display", "Refresh rate", Icons.Filled.Refresh, ApexMint) { onNavigate(Routes.DISPLAY) } }
-                item { NavCard("VPN & DNS", "Tunnel, DoH, kill switch", Icons.Filled.Security, ApexPurple) { onNavigate(Routes.NETWORK) } }
-                item { NavCard("Game Library", "Per-game profiles", Icons.Filled.SportsEsports, ApexMint) { onNavigate(Routes.GAMES) } }
-                item { NavCard("Profiles", "Save, import, export", Icons.Filled.Tune, ApexPurple) { onNavigate(Routes.PROFILES) } }
-            }
-
-            // VPN status card
-            GlassCard(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Router, null, tint = ApexMint, modifier = Modifier.size(28.dp))
-                    Spacer(Modifier.size(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("VPN: ${state.vpnMode.name}", style = MaterialTheme.typography.titleMedium,
-                            color = Color.White, fontWeight = FontWeight.SemiBold)
-                        Text("DNS: ${state.dnsProvider.name}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f))
+            item(key = "vpn") {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Router, null, tint = ApexMint, modifier = Modifier.size(28.dp))
+                        Spacer(Modifier.size(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "VPN: ${state.vpnMode.name.replace('_', ' ')}",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "DNS: ${state.dnsProvider.name}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                        OutlinedButton(onClick = { haptics.tap(); onNavigate(Routes.NETWORK) }) {
+                            Text("Manage")
+                        }
                     }
-                    OutlinedButton(onClick = { haptics.tap(); onNavigate(Routes.NETWORK) }) { Text("Manage") }
                 }
             }
 
-            // Thermal safety card
-            SwitchCard(
-                label = "Thermal auto-revert",
-                description = "Revert to Balanced when CPU > ${state.settings?.cpuTempThresholdC ?: 75}°C or GPU > ${state.settings?.gpuTempThresholdC ?: 85}°C",
-                checked = state.settings?.autoRevertOnThermal ?: true,
-                onCheckedChange = { /* delegated to Settings */ }
-            )
+            item(key = "thermal") {
+                SwitchCard(
+                    label = "Thermal auto-revert",
+                    description = "Revert to Balanced when CPU > ${state.settings?.cpuTempThresholdC ?: 75}°C or GPU > ${state.settings?.gpuTempThresholdC ?: 85}°C",
+                    checked = state.settings?.autoRevertOnThermal ?: true,
+                    onCheckedChange = { /* delegated to Settings */ }
+                )
+            }
 
-            Spacer(Modifier.height(40.dp))
+            item(key = "bottom_spacer") {
+                Spacer(Modifier.height(40.dp))
+            }
         }
     }
 }
 
 @Composable
 private fun NavCard(
-    title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accent: Color, onClick: () -> Unit
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
-    GlassCard(Modifier.fillMaxWidth()) {
+    GlassCard(modifier = modifier.fillMaxWidth()) {
         Column(
             Modifier
-                .padding(16.dp)
+                .fillMaxWidth()
                 .clickable(onClick = onClick)
+                .padding(16.dp)
         ) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(28.dp))
             Spacer(Modifier.height(12.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White,
-                fontWeight = FontWeight.SemiBold)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.65f))
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.65f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
-private fun thermalColor(tempC: Float, warm: Int, hot: Int): Color = when {
-    tempC >= hot -> ThermalHot
-    tempC >= warm -> androidx.compose.ui.graphics.Color(0xFFFFC107)
-    else -> ThermalCool
+private fun formatTemp(tempC: Float): String =
+    if (tempC <= 0f) "—" else "${tempC.toInt()}°C"
+
+private fun gpuSubtitle(state: DashboardState): String {
+    val gov = state.gpuState.governor
+    val mhz = state.gpuState.curClockMhz
+    return when {
+        mhz > 0L && gov.isNotBlank() -> "${mhz} MHz · $gov"
+        mhz > 0L -> "${mhz} MHz"
+        gov.isNotBlank() -> gov
+        else -> "Live read"
+    }
 }
 
-@Suppress("unused")
-private val powerIcon = Icons.Filled.PowerSettingsNew
+private fun thermalColor(tempC: Float, warm: Int, hot: Int): Color = when {
+    tempC <= 0f -> Color.White.copy(alpha = 0.5f)
+    tempC >= hot -> ThermalHot
+    tempC >= warm -> Color(0xFFFFC107)
+    else -> ThermalCool
+}

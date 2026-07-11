@@ -45,6 +45,7 @@ class SettingsDataStore @Inject constructor(
             vpnKillSwitch = p[PreferenceKeys.VPN_KILL_SWITCH] ?: true,
             vpnLastMode = p[PreferenceKeys.VPN_LAST_MODE] ?: NetworkConfig.VpnMode.OFF.name,
             vpnPerAppPackages = p[PreferenceKeys.VPN_PER_APP_PACKAGES]?.toList() ?: emptyList(),
+            vpnWireGuardConfig = p[PreferenceKeys.VPN_WIREGUARD_CONFIG] ?: "",
             dnsProvider = p[PreferenceKeys.DNS_PROVIDER] ?: NetworkConfig.DnsProvider.CLOUDFLARE.name,
             customDohUrl = p[PreferenceKeys.CUSTOM_DOH_URL] ?: "",
             privateDnsMode = p[PreferenceKeys.PRIVATE_DNS_MODE] ?: NetworkConfig.PrivateDnsMode.AUTO.name,
@@ -84,6 +85,7 @@ class SettingsDataStore @Inject constructor(
     suspend fun setVpnPerAppPackages(pkgs: List<String>) = update {
         it[PreferenceKeys.VPN_PER_APP_PACKAGES] = pkgs.toSet()
     }
+    suspend fun setVpnWireGuardConfig(raw: String) = update { it[PreferenceKeys.VPN_WIREGUARD_CONFIG] = raw }
     suspend fun setDnsProvider(p: NetworkConfig.DnsProvider) = update { it[PreferenceKeys.DNS_PROVIDER] = p.name }
     suspend fun setCustomDohUrl(url: String) = update { it[PreferenceKeys.CUSTOM_DOH_URL] = url }
     suspend fun setPrivateDnsMode(m: NetworkConfig.PrivateDnsMode) = update {
@@ -130,6 +132,7 @@ data class SettingsSnapshot(
     val vpnKillSwitch: Boolean,
     val vpnLastMode: String,
     val vpnPerAppPackages: List<String>,
+    val vpnWireGuardConfig: String = "",
     val dnsProvider: String,
     val customDohUrl: String,
     val privateDnsMode: String,
