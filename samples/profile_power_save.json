@@ -1,0 +1,32 @@
+{
+  "id": -3,
+  "name": "Power Save",
+  "description": "conservative governor, little-core-only option, low max frequency. Use on low battery or for non-game workloads.",
+  "iconKey": "battery",
+  "cpu": [],
+  "gpu": null,
+  "display": {
+    "modeId": -1,
+    "refreshRateHz": 60.0,
+    "forcePeakHz": false,
+    "adaptive": true,
+    "batterySaverHz": true,
+    "perAppPackages": []
+  },
+  "network": {
+    "vpnMode": "OFF",
+    "dnsProvider": "CLOUDFLARE",
+    "customDohUrl": "",
+    "killSwitch": true,
+    "allowBypass": false,
+    "perAppMode": "OFF",
+    "perAppPackages": [],
+    "wireGuardConfig": "",
+    "privateDnsMode": "AUTO",
+    "privateDnsSpecifier": "cloudflare-dns.com"
+  },
+  "thermalPolicy": "POWER_SAVE",
+  "triggerPackages": [],
+  "createdAt": 0,
+  "updatedAt": 0
+}

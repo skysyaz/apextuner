@@ -1,0 +1,14 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.ApexTuner" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/apex_background_dark</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <style name="Theme.ApexTuner.Splash" parent="Theme.ApexTuner">
+        <item name="android:windowBackground">@color/apex_background_dark</item>
+    </style>
+</resources>

@@ -1,0 +1,32 @@
+{
+  "id": -2,
+  "name": "Balanced",
+  "description": "schedutil governor, sane frequency limits, adaptive refresh rate. The everyday default — good performance without undue thermal load.",
+  "iconKey": "scale",
+  "cpu": [],
+  "gpu": null,
+  "display": {
+    "modeId": -1,
+    "refreshRateHz": 60.0,
+    "forcePeakHz": false,
+    "adaptive": true,
+    "batterySaverHz": false,
+    "perAppPackages": []
+  },
+  "network": {
+    "vpnMode": "OFF",
+    "dnsProvider": "CLOUDFLARE",
+    "customDohUrl": "",
+    "killSwitch": true,
+    "allowBypass": false,
+    "perAppMode": "OFF",
+    "perAppPackages": [],
+    "wireGuardConfig": "",
+    "privateDnsMode": "AUTO",
+    "privateDnsSpecifier": "cloudflare-dns.com"
+  },
+  "thermalPolicy": "BALANCED",
+  "triggerPackages": [],
+  "createdAt": 0,
+  "updatedAt": 0
+}

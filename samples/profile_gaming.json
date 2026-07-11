@@ -1,0 +1,65 @@
+{
+  "id": 0,
+  "name": "Gaming — Custom",
+  "description": "Custom gaming profile: Max Perf CPU + peak Hz + DNS-only VPN to Cloudflare DoH + Private DNS strict to cloudflare-dns.com. Bind to a game from the Game Library.",
+  "iconKey": "videogame_asset",
+  "cpu": [
+    {
+      "clusterId": 0,
+      "label": "Little",
+      "cores": [0, 1, 2, 3],
+      "governor": "performance",
+      "minFreqKHz": 1800000,
+      "maxFreqKHz": 1800000,
+      "onlineMask": [true, true, true, true],
+      "availableGovernors": [],
+      "availableFrequencies": []
+    },
+    {
+      "clusterId": 1,
+      "label": "Big",
+      "cores": [4, 5, 6, 7],
+      "governor": "performance",
+      "minFreqKHz": 2400000,
+      "maxFreqKHz": 2800000,
+      "onlineMask": [true, true, true, true],
+      "availableGovernors": [],
+      "availableFrequencies": []
+    }
+  ],
+  "gpu": {
+    "socFamily": "adreno",
+    "sysfsRoot": "/sys/class/kgsl/kgsl-3d0",
+    "governor": "performance",
+    "minClockMhz": 850,
+    "maxClockMhz": 850,
+    "availableGovernors": [],
+    "availableClocks": [],
+    "busLevel": -1,
+    "idleLevel": -1
+  },
+  "display": {
+    "modeId": -1,
+    "refreshRateHz": 120.0,
+    "forcePeakHz": true,
+    "adaptive": false,
+    "batterySaverHz": false,
+    "perAppPackages": []
+  },
+  "network": {
+    "vpnMode": "DNS_ONLY",
+    "dnsProvider": "CLOUDFLARE",
+    "customDohUrl": "",
+    "killSwitch": true,
+    "allowBypass": false,
+    "perAppMode": "OFF",
+    "perAppPackages": [],
+    "wireGuardConfig": "",
+    "privateDnsMode": "STRICT",
+    "privateDnsSpecifier": "cloudflare-dns.com"
+  },
+  "thermalPolicy": "CUSTOM",
+  "triggerPackages": ["com.miHoYo.GenshinImpact", "com.tencent.tmgp.pubgmhd"],
+  "createdAt": 0,
+  "updatedAt": 0
+}

@@ -1,0 +1,32 @@
+{
+  "id": -1,
+  "name": "Max Performance",
+  "description": "All cores online, performance governor, peak GPU clock, highest refresh rate. Use for competitive gaming; thermal watchdog will throttle to Balanced if breached.",
+  "iconKey": "rocket",
+  "cpu": [],
+  "gpu": null,
+  "display": {
+    "modeId": -1,
+    "refreshRateHz": 120.0,
+    "forcePeakHz": true,
+    "adaptive": false,
+    "batterySaverHz": false,
+    "perAppPackages": []
+  },
+  "network": {
+    "vpnMode": "OFF",
+    "dnsProvider": "CLOUDFLARE",
+    "customDohUrl": "",
+    "killSwitch": true,
+    "allowBypass": false,
+    "perAppMode": "OFF",
+    "perAppPackages": [],
+    "wireGuardConfig": "",
+    "privateDnsMode": "AUTO",
+    "privateDnsSpecifier": "cloudflare-dns.com"
+  },
+  "thermalPolicy": "MAX_PERFORMANCE",
+  "triggerPackages": [],
+  "createdAt": 0,
+  "updatedAt": 0
+}

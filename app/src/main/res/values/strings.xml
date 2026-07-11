@@ -1,0 +1,92 @@
+<resources>
+    <string name="app_name">ApexTuner</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to ApexTuner</string>
+    <string name="onboarding_welcome_body">Real CPU, GPU, refresh-rate, VPN and DNS tuning for rooted Android. No paywalls, no placebo buttons — every toggle writes to real sysfs nodes.</string>
+    <string name="onboarding_step_root">Step 1 · Root access</string>
+    <string name="onboarding_step_shizuku">Step 2 · Shizuku (optional)</string>
+    <string name="onboarding_step_usage">Step 3 · Usage Access</string>
+    <string name="onboarding_step_accessibility">Step 4 · Accessibility (optional)</string>
+    <string name="onboarding_step_vpn">Step 5 · VPN consent</string>
+    <string name="onboarding_step_battery">Step 6 · Battery optimization</string>
+    <string name="onboarding_finish">Finish setup</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_grant">Grant</string>
+    <string name="onboarding_retry">Re-check</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_cpu_temp">CPU Temp</string>
+    <string name="dashboard_gpu_temp">GPU Temp</string>
+    <string name="dashboard_refresh_rate">Refresh Rate</string>
+    <string name="dashboard_active_profile">Active Profile</string>
+    <string name="dashboard_vpn_status">VPN / DNS</string>
+    <string name="dashboard_gaming_mode">Gaming Mode</string>
+    <string name="dashboard_apply_max_perf">Apply Max Performance</string>
+    <string name="dashboard_apply_balanced">Apply Balanced</string>
+    <string name="dashboard_apply_power_save">Apply Power Save</string>
+
+    <!-- CPU -->
+    <string name="cpu_title">CPU Tuning</string>
+    <string name="cpu_root_required">Root required to write CPU sysfs nodes. Read-only mode active.</string>
+
+    <!-- GPU -->
+    <string name="gpu_title">GPU Tuning</string>
+    <string name="gpu_unsupported">No GPU sysfs node detected on this SoC. GPU tuning unavailable.</string>
+
+    <!-- Display -->
+    <string name="display_title">Display &amp; Refresh Rate</string>
+    <string name="display_force_peak_hz">Force Peak Hz</string>
+    <string name="display_adaptive">Adaptive</string>
+    <string name="display_battery_saver_hz">Battery Saver Hz</string>
+
+    <!-- Network -->
+    <string name="network_title">VPN &amp; DNS</string>
+    <string name="network_vpn_mode">VPN Mode</string>
+    <string name="network_dns_provider">DNS Provider</string>
+    <string name="network_kill_switch">Kill Switch</string>
+    <string name="network_private_dns">Private DNS</string>
+    <string name="network_import_wireguard">Import WireGuard config</string>
+
+    <!-- Games -->
+    <string name="games_title">Game Library</string>
+    <string name="games_empty">No games added yet. Tap + to scan installed apps.</string>
+
+    <!-- Profiles -->
+    <string name="profiles_title">Profiles</string>
+    <string name="profiles_create">Create profile</string>
+    <string name="profiles_import">Import</string>
+    <string name="profiles_export">Export</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_thermal">Thermal Safety</string>
+    <string name="settings_boot">Boot behavior</string>
+    <string name="settings_ui">Appearance</string>
+    <string name="settings_logging">Logging</string>
+
+    <!-- QS Tile -->
+    <string name="qs_tile_gaming_mode">Gaming Mode</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_service_label">ApexTuner game-launch detection</string>
+    <string name="accessibility_service_description">Detects when a tracked game enters the foreground so ApexTuner can auto-apply its tuning profile. Does not read screen content; only window-state events.</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_tuner">Tuner service</string>
+    <string name="notif_channel_vpn">VPN tunnel</string>
+    <string name="notif_channel_thermal">Thermal warnings</string>
+    <string name="notif_tuner_text">Tuner active · profile: %1$s</string>
+
+    <!-- Generic -->
+    <string name="action_apply">Apply</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_duplicate">Duplicate</string>
+    <string name="action_edit">Edit</string>
+    <string name="root_required_banner">Root required for this feature</string>
+    <string name="shizuku_required_banner">Shizuku required for this feature</string>
+</resources>
