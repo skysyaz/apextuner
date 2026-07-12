@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -102,7 +103,7 @@ class ThermalMonitor @Inject constructor(
     }
 
     private suspend fun loop() {
-        while (isActive) {
+        while (currentCoroutineContext().isActive) {
             val snap = runCatching { readOnce() }
                 .onFailure { if (it is CancellationException) throw it }
                 .getOrDefault(ThermalSnapshot.EMPTY)
