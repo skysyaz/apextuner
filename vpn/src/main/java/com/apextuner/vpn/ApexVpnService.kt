@@ -176,7 +176,7 @@ class ApexVpnService : VpnService() {
         }
     }
 
-    private fun resolveDnsServers(cfg: NetworkConfig): List<InetAddress> {
+    private suspend fun resolveDnsServers(cfg: NetworkConfig): List<InetAddress> {
         val preset = DnsProviderPreset.fromProvider(cfg.dnsProvider)
         val hosts = when {
             cfg.dnsProvider == NetworkConfig.DnsProvider.CUSTOM && cfg.customDohUrl.isNotBlank() ->
