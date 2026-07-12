@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,16 +44,18 @@ class GamingModeController @Inject constructor(
     private val _active = MutableStateFlow(false)
     val isActive: StateFlow<Boolean> = _active.asStateFlow()
 
-    private var running = false
-    private var previousProfileId: Long? = null
+    private val _previousProfileId = MutableStateFlow<Long?>(null)
+    private var loopJob: Job? = null
 
     fun start() {
-        if (running) return
-        running = true
-        scope.launch { loop() }
+        if (loopJob != null) return
+        loopJob = scope.launch { loop() }
     }
 
-    fun stop() { running = false }
+    fun stop() {
+        loopJob?.cancel()
+        loopJob = null
+    }
 
     /**
      * Manually toggle Gaming Mode (from the QS Tile). When turning on, we
@@ -63,20 +66,20 @@ class GamingModeController @Inject constructor(
         settings.setGamingModeActive(on)
         _active.value = on
         if (!on) {
-            previousProfileId?.let { profileApplier.applyById(it) }
+            _previousProfileId.value?.let { profileApplier.applyById(it) }
             _activeGame.value = null
         }
     }
 
     private suspend fun loop() {
-        while (running) {
+        while (loopJob?.isActive == true) {
             val game = runCatching { detector.detectForegroundGame() }
                 .getOrDefault(null)
             val current = _activeGame.value
 
             if (game != null && game.packageName != current?.packageName) {
                 // Game launched → apply its bound profile.
-                previousProfileId = settings.snapshot.first().activeProfileId
+                _previousProfileId.value = settings.snapshot.first().activeProfileId
                 val profile = profileRepo.getById(game.profileId)
                     ?: profileRepo.getById(Profile.DEFAULT_ID_MAX_PERFORMANCE)
                 if (profile != null) {
@@ -94,7 +97,7 @@ class GamingModeController @Inject constructor(
                 }
             } else if (game == null && current != null) {
                 // Game exited → revert.
-                val revertTo = previousProfileId ?: Profile.DEFAULT_ID_BALANCED
+                val revertTo = _previousProfileId.value ?: Profile.DEFAULT_ID_BALANCED
                 profileApplier.applyById(revertTo)
                 _activeGame.value = null
                 _active.value = false

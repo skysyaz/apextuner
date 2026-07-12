@@ -33,9 +33,11 @@ class GameDetector @Inject constructor(
         val statsManager = context.getSystemService(Context.USAGE_STATS_SERVICE)
             as? UsageStatsManager ?: return null
         val now = System.currentTimeMillis()
+        // ponytail: 10s window instead of 60s reduces false positives from recently-closed apps.
+        // Still enough headroom for the 2s polling interval. Faster switching = better UX.
         val stats = statsManager.queryUsageStats(
             UsageStatsManager.INTERVAL_BEST,
-            now - 60_000L,
+            now - 10_000L,
             now
         ) ?: return null
         val foreground = stats.maxByOrNull { it.lastTimeUsed } ?: return null

@@ -12,6 +12,7 @@ import com.apextuner.engine.root.ShellSelector
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,16 +43,18 @@ class ThermalMonitor @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(ThermalSnapshot.EMPTY)
     val snapshot: StateFlow<ThermalSnapshot> = _state.asStateFlow()
-    private var running = false
+    private var loopJob: Job? = null
     private var lastBreachMs = 0L
 
     fun start() {
-        if (running) return
-        running = true
-        scope.launch { loop() }
+        if (loopJob != null) return
+        loopJob = scope.launch { loop() }
     }
 
-    fun stop() { running = false }
+    fun stop() {
+        loopJob?.cancel()
+        loopJob = null
+    }
 
     suspend fun readOnce(): ThermalSnapshot {
         val shell = selector.best()
@@ -97,7 +100,7 @@ class ThermalMonitor @Inject constructor(
     }
 
     private suspend fun loop() {
-        while (running) {
+        while (loopJob?.isActive == true) {
             val snap = runCatching { readOnce() }.getOrDefault(ThermalSnapshot.EMPTY)
             _state.value = snap
             evaluateThresholds(snap)
@@ -114,7 +117,7 @@ class ThermalMonitor @Inject constructor(
         if (!cpuBreach && !gpuBreach) return
 
         val now = System.currentTimeMillis()
-        if (now - lastBreachMs < 30_000L) return
+        if (now - lastBreachMs < 5_000L) return
         lastBreachMs = now
 
         logs.log(

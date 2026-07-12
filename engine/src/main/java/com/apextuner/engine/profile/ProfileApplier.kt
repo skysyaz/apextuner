@@ -62,10 +62,14 @@ class ProfileApplier @Inject constructor(
             ok = ok && gpuOk
         } else if (profile.thermalPolicy != Profile.ThermalPolicy.CUSTOM) {
             val current = runCatching { gpu.readCurrent() }.getOrDefault(com.apextuner.engine.gpu.GpuState.EMPTY)
-            val built = runCatching { gpu.buildPreset(profile.thermalPolicy, current) }.getOrNull()
+            val built = runCatching { gpu.buildPreset(profile.thermalPolicy, current) }
+                .onFailure { logs.log(TunerLog.Level.WARN, TunerLog.Category.GPU, "GPU buildPreset failed", it.message) }
+                .getOrNull()
             if (built != null) {
                 val gpuOk = runCatching { gpu.apply(built) }.getOrDefault(false)
                 ok = ok && gpuOk
+            } else {
+                logs.log(TunerLog.Level.WARN, TunerLog.Category.GPU, "GPU preset build returned null for policy=${profile.thermalPolicy}")
             }
         }
 
@@ -87,7 +91,9 @@ class ProfileApplier @Inject constructor(
         // VpnController when applying a profile that has a network config.
 
         settings.setActiveProfileId(profile.id)
-        settings.setLastSafeProfileId(profile.id)
+        if (ok) {
+            settings.setLastSafeProfileId(profile.id)
+        }
         logs.log(
             level = TunerLog.Level.INFO,
             category = TunerLog.Category.PROFILE,

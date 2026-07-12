@@ -30,7 +30,7 @@ class CpuTopology @Inject constructor() {
         }
 
         val clusters = clusterMap.values.mapIndexed { index, cores ->
-            val firstCore = cores.first()
+            val firstCore = cores.firstOrNull() ?: return emptyList()
             val governor = shell.readFile(CpuPaths.scalingGovernor(firstCore)).orEmpty()
             val minFreq = shell.readFile(CpuPaths.scalingMinFreq(firstCore))?.toLongOrNull() ?: 0L
             val maxFreq = shell.readFile(CpuPaths.scalingMaxFreq(firstCore))?.toLongOrNull() ?: 0L
@@ -109,8 +109,10 @@ class CpuTopology @Inject constructor() {
             val token = part.trim()
             if (token.isEmpty()) continue
             if ("-" in token) {
-                val (a, b) = token.split("-").mapNotNull { it.toIntOrNull() }
-                if (a != null && b != null) for (i in a..b) out.add(i)
+                val parts = token.split("-").mapNotNull { it.toIntOrNull() }
+                if (parts.size == 2) {
+                    for (i in parts[0]..parts[1]) out.add(i)
+                }
             } else {
                 token.toIntOrNull()?.let { out.add(it) }
             }

@@ -111,7 +111,7 @@ class CpuController @Inject constructor(
                 Profile.ThermalPolicy.BALANCED ->
                     Triple(bestGovernor(cluster, Governors.SCHEDUTIL), minFreq, maxFreq)
                 Profile.ThermalPolicy.POWER_SAVE ->
-                    Triple(bestGovernor(cluster, Governors.CONSERVATIVE), minFreq, maxFreq / 2L.coerceAtLeast(1L))
+                    Triple(bestGovernor(cluster, Governors.CONSERVATIVE), minFreq, (maxFreq / 2L).coerceAtLeast(minFreq))
                 Profile.ThermalPolicy.CUSTOM ->
                     Triple(cluster.governor, cluster.minFreqKHz, cluster.maxFreqKHz)
             }

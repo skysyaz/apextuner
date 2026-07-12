@@ -2,8 +2,10 @@ package com.apextuner.engine.cpu
 
 import com.apextuner.data.datastore.SettingsDataStore
 import com.apextuner.engine.root.ShellSelector
+import com.apextuner.engine.thermal.ThermalMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -26,22 +28,25 @@ import javax.inject.Singleton
 class CpuMonitor @Inject constructor(
     private val controller: CpuController,
     private val selector: ShellSelector,
-    private val settings: SettingsDataStore
+    private val settings: SettingsDataStore,
+    private val thermalMonitor: ThermalMonitor
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(CpuSnapshot.EMPTY)
     val snapshot: StateFlow<CpuSnapshot> = _state.asStateFlow()
 
     private var lastProcStat: Map<Int, LongArray>? = null
-    private var running = false
+    private var loopJob: Job? = null
 
     fun start() {
-        if (running) return
-        running = true
-        scope.launch { loop() }
+        if (loopJob != null) return
+        loopJob = scope.launch { loop() }
     }
 
-    fun stop() { running = false }
+    fun stop() {
+        loopJob?.cancel()
+        loopJob = null
+    }
 
     fun tick(): Flow<CpuSnapshot> = flow {
         var last: Map<Int, LongArray>? = null
@@ -54,7 +59,7 @@ class CpuMonitor @Inject constructor(
     }
 
     private suspend fun loop() {
-        while (running) {
+        while (loopJob?.isActive == true) {
             val snap = readOnce(lastProcStat)
             lastProcStat = readProcStatPerCpu()
             if (snap != null) _state.value = snap
@@ -75,13 +80,13 @@ class CpuMonitor @Inject constructor(
         }
 
         val shell = selector.best()
-        val temps = mutableListOf<Float>()
+        val thermalSnap = thermalMonitor.snapshot.value
         val clusterStates = clusters.map { cluster ->
             val curFreqs = cluster.cores.map { cpu ->
                 shell.readFile(CpuPaths.scalingCurFreq(cpu))?.toLongOrNull() ?: 0L
             }
             val coreLoads = cluster.cores.map { cpu -> loads[cpu] ?: 0f }
-            val temp = 0f
+            val temp = thermalSnap.cpuTempC
             CpuClusterState(
                 clusterId = cluster.clusterId, label = cluster.label, cores = cluster.cores,
                 onlineMask = cluster.onlineMask, governor = cluster.governor,
@@ -96,7 +101,7 @@ class CpuMonitor @Inject constructor(
             loads.isNotEmpty() -> loads.values.average().toFloat()
             else -> clusterStates.flatMap { it.loadsPercent }.ifEmpty { listOf(0f) }.average().toFloat()
         }
-        val avgTemp = if (temps.isEmpty()) 0f else temps.average().toFloat()
+        val avgTemp = thermalSnap.cpuTempC
         return CpuSnapshot(clusterStates, avgLoad, avgTemp, System.currentTimeMillis())
     }
 

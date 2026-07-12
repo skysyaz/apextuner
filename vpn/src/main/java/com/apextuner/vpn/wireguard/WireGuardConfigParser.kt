@@ -139,7 +139,7 @@ object WireGuardConfigParser {
         var keepalive: Int? = null
 
         fun build(): WireGuardPeer? {
-            if (publicKey.isBlank() && allowedIps.isEmpty()) return null
+            if (publicKey.isBlank() || allowedIps.isEmpty()) return null
             return WireGuardPeer(publicKey, preSharedKey, allowedIps.toList(), endpoint, keepalive)
         }
     }

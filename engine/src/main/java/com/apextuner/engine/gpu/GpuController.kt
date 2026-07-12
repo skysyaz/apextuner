@@ -76,7 +76,7 @@ class GpuController @Inject constructor(
             Profile.ThermalPolicy.BALANCED ->
                 Triple(pickGovernor(current, "msm-adreno-tz"), min, max)
             Profile.ThermalPolicy.POWER_SAVE ->
-                Triple(pickGovernor(current, "simple_ondemand"), min, max / 2L.coerceAtLeast(1L))
+                Triple(pickGovernor(current, "simple_ondemand"), min, (max / 2L).coerceAtLeast(min))
             Profile.ThermalPolicy.CUSTOM ->
                 Triple(current.governor, current.minClockMhz, current.maxClockMhz)
         }

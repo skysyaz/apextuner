@@ -180,14 +180,34 @@ class ApexVpnService : VpnService() {
         val preset = DnsProviderPreset.fromProvider(cfg.dnsProvider)
         val hosts = when {
             cfg.dnsProvider == NetworkConfig.DnsProvider.CUSTOM && cfg.customDohUrl.isNotBlank() ->
-                // Best-effort: custom DoH URL host isn't a plain DNS IP; fall back to Cloudflare.
                 DnsProviderPreset.CLOUDFLARE.plainServers
             preset != null -> preset.plainServers
             else -> DnsProviderPreset.CLOUDFLARE.plainServers
         }
-        return hosts.mapNotNull { host ->
-            runCatching { InetAddress.getByName(host) }.getOrNull()
-        }.filter { it.address.size == 4 } // IPv4 for the light forwarder
+        val resolved = mutableListOf<InetAddress>()
+        val failed = mutableListOf<String>()
+        for (host in hosts) {
+            runCatching { InetAddress.getByName(host) }
+                .onSuccess { addr ->
+                    if (addr.address.size == 4) {
+                        resolved.add(addr)
+                    } else {
+                        logs.log(TunerLog.Level.WARN, TunerLog.Category.DNS, "Skipped IPv6 DNS server: $host")
+                    }
+                }
+                .onFailure {
+                    failed.add(host)
+                    logs.log(TunerLog.Level.WARN, TunerLog.Category.DNS, "Failed to resolve DNS server: $host", it.message)
+                }
+        }
+        if (resolved.isNotEmpty() && failed.isNotEmpty()) {
+            logs.log(
+                TunerLog.Level.WARN, TunerLog.Category.DNS,
+                "Some DNS servers failed to resolve (using ${resolved.size}/${hosts.size})",
+                "failed: ${failed.joinToString()}"
+            )
+        }
+        return resolved
     }
 
     override fun onRevoke() {
