@@ -10,6 +10,7 @@ import com.apextuner.data.repository.LogRepository
 import com.apextuner.engine.profile.ProfileApplier
 import com.apextuner.engine.root.ShellSelector
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -47,7 +49,7 @@ class ThermalMonitor @Inject constructor(
     private var lastBreachMs = 0L
 
     fun start() {
-        if (loopJob != null) return
+        if (loopJob?.isActive == true) return
         loopJob = scope.launch { loop() }
     }
 
@@ -100,8 +102,10 @@ class ThermalMonitor @Inject constructor(
     }
 
     private suspend fun loop() {
-        while (loopJob?.isActive == true) {
-            val snap = runCatching { readOnce() }.getOrDefault(ThermalSnapshot.EMPTY)
+        while (isActive) {
+            val snap = runCatching { readOnce() }
+                .onFailure { if (it is CancellationException) throw it }
+                .getOrDefault(ThermalSnapshot.EMPTY)
             _state.value = snap
             evaluateThresholds(snap)
             delay(1000L)
@@ -127,6 +131,7 @@ class ThermalMonitor @Inject constructor(
             detail = "cpuThreshold=${s.cpuTempThresholdC}, gpuThreshold=${s.gpuTempThresholdC}"
         )
         runCatching { profileApplier.applyBuiltIn(com.apextuner.data.model.Profile.ThermalPolicy.BALANCED) }
+            .onFailure { if (it is CancellationException) throw it }
     }
 
     /** Pure-Kotlin helper for tests — no shell required. */

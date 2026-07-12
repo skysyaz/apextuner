@@ -84,6 +84,7 @@ class TunerForegroundService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        gamingMode.stop()
         thermalMonitor.stop()
         cpuMonitor.stop()
         lifecycleScope.launch {

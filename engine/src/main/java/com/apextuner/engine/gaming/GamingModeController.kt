@@ -7,15 +7,18 @@ import com.apextuner.data.model.TunerLog
 import com.apextuner.data.repository.LogRepository
 import com.apextuner.data.repository.ProfileRepository
 import com.apextuner.engine.profile.ProfileApplier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -48,7 +51,7 @@ class GamingModeController @Inject constructor(
     private var loopJob: Job? = null
 
     fun start() {
-        if (loopJob != null) return
+        if (loopJob?.isActive == true) return
         loopJob = scope.launch { loop() }
     }
 
@@ -72,8 +75,10 @@ class GamingModeController @Inject constructor(
     }
 
     private suspend fun loop() {
-        while (loopJob?.isActive == true) {
+        // currentCoroutineContext(): member `isActive` StateFlow would shadow kotlinx.coroutines.isActive
+        while (currentCoroutineContext().isActive) {
             val game = runCatching { detector.detectForegroundGame() }
+                .onFailure { if (it is CancellationException) throw it }
                 .getOrDefault(null)
             val current = _activeGame.value
 

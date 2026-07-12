@@ -3,6 +3,7 @@ package com.apextuner.engine.cpu
 import com.apextuner.data.datastore.SettingsDataStore
 import com.apextuner.engine.root.ShellSelector
 import com.apextuner.engine.thermal.ThermalMonitor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,7 +41,7 @@ class CpuMonitor @Inject constructor(
     private var loopJob: Job? = null
 
     fun start() {
-        if (loopJob != null) return
+        if (loopJob?.isActive == true) return
         loopJob = scope.launch { loop() }
     }
 
@@ -59,7 +61,7 @@ class CpuMonitor @Inject constructor(
     }
 
     private suspend fun loop() {
-        while (loopJob?.isActive == true) {
+        while (isActive) {
             val snap = readOnce(lastProcStat)
             lastProcStat = readProcStatPerCpu()
             if (snap != null) _state.value = snap
@@ -72,7 +74,9 @@ class CpuMonitor @Inject constructor(
         if (curProcStat.isEmpty() && prevProcStat == null) return null
 
         val loads = computeLoads(prevProcStat, curProcStat)
-        val clusters = runCatching { controller.readCurrent() }.getOrDefault(emptyList())
+        val clusters = runCatching { controller.readCurrent() }
+            .onFailure { if (it is CancellationException) throw it }
+            .getOrDefault(emptyList())
 
         if (clusters.isEmpty()) {
             val avgLoad = if (loads.isEmpty()) 0f else loads.values.average().toFloat()
